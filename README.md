@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI習慣コーチ
 
-## Getting Started
+##  概要
+習慣を記録し、AIから改善アドバイスを受けられるWebアプリです。  
+日々の行動を可視化し、継続しやすい環境を作ることを目的としています。
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+##  デモ
+（ここに後でURL貼る）
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+##  主な機能
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- 習慣の追加
+- 習慣の記録（ワンクリック）
+- AIによる習慣分析・改善提案
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+##  AI機能の特徴
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+AIが以下の3点を自動生成します：
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- 良い点
+- 改善点
+- 明日やるべき行動
 
-## Deploy on Vercel
+ 単なるアドバイスではなく「行動に落とし込める設計」にしてる
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🛠 使用技術
+
+- Next.js（App Router）
+- TypeScript
+- Tailwind CSS
+- OpenAI API
+
+---
+
+## 工夫した点
+
+- AIの出力を構造化してUX向上
+- 改行崩れを防ぐため `whitespace-pre-wrap` を採用
+- シンプルで直感的に使えるUI設計
+- APIエラー時のハンドリング
+
+---
+
+##  今後の改善
+
+- グラフで習慣を可視化
+- ログ履歴の表示
+- ユーザー認証
+- データベース導入
+
+---
+
+##  開発者
+
+- 個人開発（ポートフォリオ）
