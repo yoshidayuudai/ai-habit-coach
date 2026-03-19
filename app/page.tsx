@@ -22,6 +22,8 @@ const colorClasses = [
   "from-cyan-100 to-sky-100 text-cyan-700",
 ];
 
+const weekLabels = ["日", "月", "火", "水", "木", "金", "土"];
+
 function getColorClass(name: string) {
   const sum = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colorClasses[sum % colorClasses.length];
@@ -70,6 +72,28 @@ function renderAdvice(advice: string) {
   );
 }
 
+function getMonthCalendar(year: number, month: number) {
+  const firstDay = new Date(year, month, 1);
+  const startDay = firstDay.getDay();
+  const lastDate = new Date(year, month + 1, 0).getDate();
+
+  const cells: (number | null)[] = [];
+
+  for (let i = 0; i < startDay; i++) {
+    cells.push(null);
+  }
+
+  for (let day = 1; day <= lastDate; day++) {
+    cells.push(day);
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
+
+  return cells;
+}
+
 export default function Home() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
@@ -77,8 +101,21 @@ export default function Home() {
   const [loadingAdvice, setLoadingAdvice] = useState(false);
   const [completedHabitIds, setCompletedHabitIds] = useState<number[]>([]);
 
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+  const currentDate = today.getDate();
+  const todayString = today.toISOString().split("T")[0];
+
   const habitCountLabel = useMemo(() => `${habits.length} 件`, [habits.length]);
-  const today = new Date().toISOString().split("T")[0];
+  const calendarCells = useMemo(
+    () => getMonthCalendar(currentYear, currentMonth),
+    [currentYear, currentMonth]
+  );
+
+  const completedDateSet = useMemo(() => {
+    return new Set(logs.map((log) => log.date));
+  }, [logs]);
 
   const fetchHabits = async () => {
     try {
@@ -102,6 +139,15 @@ export default function Home() {
 
   const checkHabit = async (id: number) => {
     try {
+      const alreadyLoggedToday = logs.some(
+        (log) => log.habit_id === id && log.date === todayString
+      );
+
+      if (alreadyLoggedToday) {
+        alert("今日はすでに記録済みです");
+        return;
+      }
+
       const res = await fetch("/api/logs", {
         method: "POST",
         body: JSON.stringify({ habitId: id }),
@@ -204,7 +250,7 @@ export default function Home() {
                 <div className="mt-5 grid gap-4">
                   {habits.map((h) => {
                     const doneToday = logs.some(
-                      (log) => log.habit_id === h.id && log.date === today
+                      (log) => log.habit_id === h.id && log.date === todayString
                     );
                     const isCompleted =
                       completedHabitIds.includes(h.id) || doneToday;
@@ -258,6 +304,68 @@ export default function Home() {
                   })}
                 </div>
               )}
+            </section>
+
+            <section className="mt-8 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-extrabold text-slate-900 md:text-3xl">
+                    今月の達成カレンダー
+                  </h2>
+                  <p className="mt-2 text-sm text-slate-500 md:text-base">
+                    記録した日に自動で印がつきます
+                  </p>
+                </div>
+                <div className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
+                  {currentMonth + 1}月
+                </div>
+              </div>
+
+              <div className="mt-5 grid grid-cols-7 gap-2">
+                {weekLabels.map((label) => (
+                  <div
+                    key={label}
+                    className="text-center text-sm font-bold text-slate-500"
+                  >
+                    {label}
+                  </div>
+                ))}
+
+                {calendarCells.map((day, index) => {
+                  if (day === null) {
+                    return (
+                      <div
+                        key={`empty-${index}`}
+                        className="aspect-square rounded-2xl bg-transparent"
+                      />
+                    );
+                  }
+
+                  const dateString = `${currentYear}-${String(
+                    currentMonth + 1
+                  ).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+                  const isCompletedDay = completedDateSet.has(dateString);
+                  const isToday = day === currentDate;
+
+                  return (
+                    <div
+                      key={dateString}
+                      className={`relative flex aspect-square items-center justify-center rounded-2xl border text-sm font-bold transition ${
+                        isCompletedDay
+                          ? "border-emerald-200 bg-emerald-100 text-emerald-800"
+                          : "border-slate-200 bg-slate-50 text-slate-700"
+                      } ${isToday ? "ring-2 ring-blue-400" : ""}`}
+                    >
+                      <span>{day}</span>
+
+                      {isCompletedDay && (
+                        <span className="absolute bottom-2 h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </section>
 
             <section className="mt-8 overflow-hidden rounded-[28px] bg-gradient-to-r from-fuchsia-600 via-purple-600 to-indigo-600 p-6 text-white shadow-[0_18px_40px_rgba(109,40,217,0.28)] md:p-7">
