@@ -89,7 +89,10 @@ export default function Home() {
         body: JSON.stringify({ habitId: id }),
       });
 
-      setCompletedHabitIds((prev) => [...prev, id]);
+      setCompletedHabitIds((prev) => {
+        if (prev.includes(id)) return prev;
+        return [...prev, id];
+      });
 
       setTimeout(() => {
         setCompletedHabitIds((prev) => prev.filter((habitId) => habitId !== id));
@@ -183,7 +186,11 @@ export default function Home() {
                     return (
                       <div
                         key={h.id}
-                        className="group flex items-center justify-between rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm transition hover:border-slate-300 hover:shadow-md"
+                        className={`group flex items-center justify-between rounded-3xl border px-5 py-5 shadow-sm transition ${
+                          isCompleted
+                            ? "border-emerald-200 bg-emerald-50/80 shadow-[0_10px_30px_rgba(16,185,129,0.12)]"
+                            : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
+                        }`}
                       >
                         <div className="flex items-center gap-4">
                           <div
@@ -195,8 +202,12 @@ export default function Home() {
                             <p className="text-xl font-extrabold text-slate-900 md:text-2xl">
                               {h.name}
                             </p>
-                            <p className="mt-1 text-sm text-slate-500">
-                              今日も一歩ずつ継続
+                            <p
+                              className={`mt-1 text-sm ${
+                                isCompleted ? "text-emerald-700" : "text-slate-500"
+                              }`}
+                            >
+                              {isCompleted ? "今日の記録が完了しました" : "今日も一歩ずつ継続"}
                             </p>
                           </div>
                         </div>
