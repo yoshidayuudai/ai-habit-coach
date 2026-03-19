@@ -7,6 +7,12 @@ type Habit = {
   name: string;
 };
 
+type Log = {
+  id: number;
+  habit_id: number;
+  date: string;
+};
+
 const colorClasses = [
   "from-blue-100 to-indigo-100 text-blue-700",
   "from-emerald-100 to-green-100 text-emerald-700",
@@ -66,11 +72,13 @@ function renderAdvice(advice: string) {
 
 export default function Home() {
   const [habits, setHabits] = useState<Habit[]>([]);
+  const [logs, setLogs] = useState<Log[]>([]);
   const [advice, setAdvice] = useState("");
   const [loadingAdvice, setLoadingAdvice] = useState(false);
   const [completedHabitIds, setCompletedHabitIds] = useState<number[]>([]);
 
   const habitCountLabel = useMemo(() => `${habits.length} 件`, [habits.length]);
+  const today = new Date().toISOString().split("T")[0];
 
   const fetchHabits = async () => {
     try {
@@ -82,12 +90,26 @@ export default function Home() {
     }
   };
 
+  const fetchLogs = async () => {
+    try {
+      const res = await fetch("/api/logs");
+      const data = await res.json();
+      setLogs(data);
+    } catch (error) {
+      console.error("ログ取得エラー:", error);
+    }
+  };
+
   const checkHabit = async (id: number) => {
     try {
-      await fetch("/api/logs", {
+      const res = await fetch("/api/logs", {
         method: "POST",
         body: JSON.stringify({ habitId: id }),
       });
+
+      const newLog = await res.json();
+
+      setLogs((prev) => [...prev, newLog]);
 
       setCompletedHabitIds((prev) => {
         if (prev.includes(id)) return prev;
@@ -132,6 +154,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchHabits();
+    fetchLogs();
   }, []);
 
   return (
@@ -155,9 +178,9 @@ export default function Home() {
 
               <a
                 href="/add"
-                className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-base font-bold text-white shadow-lg shadow-blue-200 transition hover:translate-y-[-1px] hover:bg-blue-700"
+                className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-base font-bold text-white shadow-lg shadow-blue-200 transition duration-200 hover:translate-y-[-1px] hover:bg-blue-700 active:scale-[0.98]"
               >
-                ＋ 習慣を追加
+                習慣を追加
               </a>
             </div>
           </div>
@@ -180,21 +203,27 @@ export default function Home() {
               ) : (
                 <div className="mt-5 grid gap-4">
                   {habits.map((h) => {
-                    const isCompleted = completedHabitIds.includes(h.id);
+                    const doneToday = logs.some(
+                      (log) => log.habit_id === h.id && log.date === today
+                    );
+                    const isCompleted =
+                      completedHabitIds.includes(h.id) || doneToday;
                     const iconColorClass = getColorClass(h.name);
 
                     return (
                       <div
                         key={h.id}
-                        className={`group flex items-center justify-between rounded-3xl border px-5 py-5 shadow-sm transition ${
+                        className={`group flex items-center justify-between rounded-3xl border px-5 py-5 shadow-sm transition-all duration-300 ${
                           isCompleted
-                            ? "border-emerald-200 bg-emerald-50/80 shadow-[0_10px_30px_rgba(16,185,129,0.12)]"
-                            : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
+                            ? "scale-[1.01] border-emerald-200 bg-emerald-50/80 shadow-[0_14px_36px_rgba(16,185,129,0.16)]"
+                            : "border-slate-200 bg-white hover:translate-y-[-2px] hover:border-slate-300 hover:shadow-md"
                         }`}
                       >
                         <div className="flex items-center gap-4">
                           <div
-                            className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-xl font-extrabold ${iconColorClass}`}
+                            className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-xl font-extrabold transition-transform duration-300 ${
+                              isCompleted ? "scale-110" : ""
+                            } ${iconColorClass}`}
                           >
                             {h.name.slice(0, 1)}
                           </div>
@@ -203,21 +232,23 @@ export default function Home() {
                               {h.name}
                             </p>
                             <p
-                              className={`mt-1 text-sm ${
+                              className={`mt-1 text-sm transition-colors duration-300 ${
                                 isCompleted ? "text-emerald-700" : "text-slate-500"
                               }`}
                             >
-                              {isCompleted ? "今日の記録が完了しました" : "今日も一歩ずつ継続"}
+                              {isCompleted
+                                ? "今日の記録が完了しました"
+                                : "今日も一歩ずつ継続"}
                             </p>
                           </div>
                         </div>
 
                         <button
                           onClick={() => checkHabit(h.id)}
-                          className={`rounded-2xl px-4 py-3 text-base font-extrabold text-white shadow-lg transition md:px-5 ${
+                          className={`rounded-2xl px-4 py-3 text-base font-extrabold text-white shadow-lg transition-all duration-200 md:px-5 ${
                             isCompleted
-                              ? "bg-emerald-600 shadow-emerald-100"
-                              : "bg-green-500 shadow-green-100 hover:translate-y-[-1px] hover:bg-green-600"
+                              ? "scale-105 bg-emerald-600 shadow-emerald-100"
+                              : "bg-green-500 shadow-green-100 hover:translate-y-[-1px] hover:bg-green-600 active:scale-[0.98]"
                           }`}
                         >
                           {isCompleted ? "記録済み" : "✔ 記録"}
@@ -246,7 +277,7 @@ export default function Home() {
                 <button
                   onClick={getAdvice}
                   disabled={loadingAdvice}
-                  className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-base font-extrabold text-purple-700 shadow-lg shadow-purple-900/10 transition hover:translate-y-[-1px] hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-base font-extrabold text-purple-700 shadow-lg shadow-purple-900/10 transition-all duration-200 hover:translate-y-[-1px] hover:bg-purple-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {loadingAdvice ? "取得中..." : "AIアドバイスをもらう"}
                 </button>

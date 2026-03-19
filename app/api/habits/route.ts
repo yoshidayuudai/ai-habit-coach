@@ -1,7 +1,19 @@
-import { habits } from "@/lib/db";
+import { supabase } from "@/lib/db";
 
 export async function GET() {
-  return new Response(JSON.stringify(habits), {
+  const { data, error } = await supabase
+    .from("habits")
+    .select("*")
+    .order("id", { ascending: true });
+
+  if (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  return new Response(JSON.stringify(data), {
     headers: { "Content-Type": "application/json" },
   });
 }
@@ -9,14 +21,20 @@ export async function GET() {
 export async function POST(req: Request) {
   const body = await req.json();
 
-  const newHabit = {
-    id: Date.now(),
-    name: body.name,
-  };
+  const { data, error } = await supabase
+    .from("habits")
+    .insert([{ name: body.name }])
+    .select()
+    .single();
 
-  habits.push(newHabit);
+  if (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
-  return new Response(JSON.stringify(newHabit), {
+  return new Response(JSON.stringify(data), {
     headers: { "Content-Type": "application/json" },
   });
 }
