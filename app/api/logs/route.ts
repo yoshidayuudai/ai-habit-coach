@@ -7,10 +7,20 @@ export async function GET() {
     .order("id", { ascending: true });
 
   if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    console.error("Supabase logs GET error:", error);
+
+    return new Response(
+      JSON.stringify({
+        error: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 
   return new Response(JSON.stringify(data), {
@@ -34,10 +44,20 @@ export async function POST(req: Request) {
     .single();
 
   if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    console.error("Supabase logs POST error:", error);
+
+    return new Response(
+      JSON.stringify({
+        error: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 
   return new Response(JSON.stringify(data), {

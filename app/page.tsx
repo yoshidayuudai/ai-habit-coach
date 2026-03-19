@@ -94,6 +94,32 @@ function getMonthCalendar(year: number, month: number) {
   return cells;
 }
 
+function calculateStreak(logs: Log[]) {
+  if (logs.length === 0) return 0;
+
+  const uniqueDates = Array.from(new Set(logs.map((log) => log.date))).sort(
+    (a, b) => new Date(b).getTime() - new Date(a).getTime()
+  );
+
+  let streak = 0;
+  const current = new Date();
+  current.setHours(0, 0, 0, 0);
+
+  for (const dateStr of uniqueDates) {
+    const logDate = new Date(dateStr);
+    logDate.setHours(0, 0, 0, 0);
+
+    if (logDate.getTime() === current.getTime()) {
+      streak++;
+      current.setDate(current.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+}
+
 export default function Home() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
@@ -112,6 +138,7 @@ export default function Home() {
     () => getMonthCalendar(currentYear, currentMonth),
     [currentYear, currentMonth]
   );
+  const streak = useMemo(() => calculateStreak(logs), [logs]);
 
   const completedDateSet = useMemo(() => {
     return new Set(logs.map((log) => log.date));
@@ -121,9 +148,18 @@ export default function Home() {
     try {
       const res = await fetch("/api/habits");
       const data = await res.json();
-      setHabits(data);
+
+      console.log("habitsレスポンス:", data);
+
+      if (Array.isArray(data)) {
+        setHabits(data);
+      } else {
+        console.error("habits取得失敗:", data);
+        setHabits([]);
+      }
     } catch (error) {
       console.error("習慣取得エラー:", error);
+      setHabits([]);
     }
   };
 
@@ -131,9 +167,18 @@ export default function Home() {
     try {
       const res = await fetch("/api/logs");
       const data = await res.json();
-      setLogs(data);
+
+      console.log("logsレスポンス:", data);
+
+      if (Array.isArray(data)) {
+        setLogs(data);
+      } else {
+        console.error("ログ取得失敗:", data);
+        setLogs([]);
+      }
     } catch (error) {
       console.error("ログ取得エラー:", error);
+      setLogs([]);
     }
   };
 
@@ -154,6 +199,12 @@ export default function Home() {
       });
 
       const newLog = await res.json();
+
+      if (newLog?.error) {
+        console.error("ログ記録失敗:", newLog);
+        alert("記録に失敗しました");
+        return;
+      }
 
       setLogs((prev) => [...prev, newLog]);
 
@@ -242,7 +293,11 @@ export default function Home() {
                 </div>
               </div>
 
-              {habits.length === 0 ? (
+              <div className="mt-4 inline-flex items-center rounded-full bg-orange-100 px-4 py-2 text-sm font-bold text-orange-700">
+                🔥 {streak}日連続達成
+              </div>
+
+              {!Array.isArray(habits) || habits.length === 0 ? (
                 <div className="mt-5 rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center text-slate-500">
                   まだ習慣がありません。まずは1つ追加してみよう。
                 </div>
