@@ -1,60 +1,39 @@
-import { supabase } from "@/lib/db";
+import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET() {
-  const { data, error } = await supabase
-    .from("habits")
-    .select("*")
-    .order("id", { ascending: true });
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (error) {
-    console.error("Supabase habits GET error:", error);
-
-    return new Response(
-      JSON.stringify({
-        error: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+  if (!url || !key) {
+    return NextResponse.json(
+      { error: 'Supabase環境変数が未設定です' },
+      { status: 500 }
+    )
   }
 
-  return new Response(JSON.stringify(data), {
-    headers: { "Content-Type": "application/json" },
-  });
-}
+  try {
+    const supabase = createClient(url, key)
 
-export async function POST(req: Request) {
-  const body = await req.json();
+    const { data, error } = await supabase
+      .from('habits')
+      .select('*')
+      .order('id', { ascending: true })
 
-  const { data, error } = await supabase
-    .from("habits")
-    .insert([{ name: body.name }])
-    .select()
-    .single();
+    if (error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      )
+    }
 
-  if (error) {
-    console.error("Supabase habits POST error:", error);
-
-    return new Response(
-      JSON.stringify({
-        error: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      }),
+    return NextResponse.json(data ?? [])
+  } catch (e) {
+    return NextResponse.json(
       {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+        error: e instanceof Error ? e.message : 'unknown error',
+      },
+      { status: 500 }
+    )
   }
-
-  return new Response(JSON.stringify(data), {
-    headers: { "Content-Type": "application/json" },
-  });
 }
