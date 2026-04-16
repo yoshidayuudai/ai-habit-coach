@@ -132,15 +132,7 @@ export default function Home() {
   const currentMonth = today.getMonth();
   const currentDate = today.getDate();
   const todayString = today.toISOString().split("T")[0];
-  const completedTodayCount = useMemo(() => {
-    return new Set(
-      logs.filter((log) => log.date === todayString).map((log) => log.habit_id)
-    ).size;
-  }, [logs, todayString]);
 
-  const completionRate = habits.length
-    ? Math.round((completedTodayCount / habits.length) * 100)
-    : 0;
   const habitCountLabel = useMemo(() => `${habits.length} 件`, [habits.length]);
   const calendarCells = useMemo(
     () => getMonthCalendar(currentYear, currentMonth),
@@ -156,8 +148,6 @@ export default function Home() {
     try {
       const res = await fetch("/api/habits");
       const data = await res.json();
-
-      console.log("habitsレスポンス:", data);
 
       if (Array.isArray(data)) {
         setHabits(data);
@@ -175,8 +165,6 @@ export default function Home() {
     try {
       const res = await fetch("/api/logs");
       const data = await res.json();
-
-      console.log("logsレスポンス:", data);
 
       if (Array.isArray(data)) {
         setLogs(data);
@@ -203,12 +191,15 @@ export default function Home() {
 
       const res = await fetch("/api/logs", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ habitId: id }),
       });
 
       const newLog = await res.json();
 
-      if (newLog?.error) {
+      if (!res.ok || newLog?.error) {
         console.error("ログ記録失敗:", newLog);
         alert("記録に失敗しました");
         return;
@@ -230,12 +221,45 @@ export default function Home() {
     }
   };
 
+  const deleteHabit = async (id: number) => {
+    const ok = window.confirm("この習慣を削除しますか？");
+    if (!ok) return;
+
+    try {
+      const res = await fetch("/api/habits", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data?.error) {
+        console.error("削除失敗:", data);
+        alert("削除に失敗しました");
+        return;
+      }
+
+      setHabits((prev) => prev.filter((habit) => habit.id !== id));
+      setLogs((prev) => prev.filter((log) => log.habit_id !== id));
+      setCompletedHabitIds((prev) => prev.filter((habitId) => habitId !== id));
+    } catch (error) {
+      console.error("削除エラー:", error);
+      alert("削除に失敗しました");
+    }
+  };
+
   const getAdvice = async () => {
     try {
       setLoadingAdvice(true);
 
       const res = await fetch("/api/ai", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ habits }),
       });
 
@@ -263,7 +287,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-violet-100 px-4 py-8 md:py-12">
+    <main className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 px-4 py-8 md:py-12">
       <div className="mx-auto max-w-4xl">
         <div className="overflow-hidden rounded-[28px] border border-white/60 bg-white/90 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur">
           <div className="border-b border-slate-100 bg-white px-6 py-6 md:px-8 md:py-7">
@@ -271,28 +295,6 @@ export default function Home() {
               <div>
                 <div className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
                   Portfolio App
-                  <div className="mt-5 flex flex-wrap gap-3">
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <p className="text-xs font-semibold text-slate-500">登録習慣</p>
-                      <p className="mt-1 text-2xl font-extrabold text-slate-900">
-                        {habits.length}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                      <p className="text-xs font-semibold text-emerald-700">今日の達成</p>
-                      <p className="mt-1 text-2xl font-extrabold text-emerald-800">
-                        {completedTodayCount}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
-                      <p className="text-xs font-semibold text-blue-700">達成率</p>
-                      <p className="mt-1 text-2xl font-extrabold text-blue-800">
-                        {completionRate}%
-                      </p>
-                    </div>
-                  </div>
                 </div>
                 <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 md:text-5xl">
                   AI習慣コーチ
@@ -344,15 +346,17 @@ export default function Home() {
                     return (
                       <div
                         key={h.id}
-                        className={`group flex flex-col gap-4 rounded-[28px] border px-5 py-5 shadow-sm transition-all duration-300 md:flex-row md:items-center md:justify-between ${isCompleted
-                          ? "scale-[1.01] border-emerald-200 bg-gradient-to-r from-emerald-50 to-white shadow-[0_14px_36px_rgba(16,185,129,0.16)]"
-                          : "border-slate-200 bg-white/95 hover:translate-y-[-2px] hover:border-slate-300 hover:shadow-lg"
-                          }`}
+                        className={`group flex items-center justify-between rounded-3xl border px-5 py-5 shadow-sm transition-all duration-300 ${
+                          isCompleted
+                            ? "scale-[1.01] border-emerald-200 bg-emerald-50/80 shadow-[0_14px_36px_rgba(16,185,129,0.16)]"
+                            : "border-slate-200 bg-white hover:translate-y-[-2px] hover:border-slate-300 hover:shadow-md"
+                        }`}
                       >
                         <div className="flex items-center gap-4">
                           <div
-                            className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-xl font-extrabold transition-transform duration-300 ${isCompleted ? "scale-110" : ""
-                              } ${iconColorClass}`}
+                            className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-xl font-extrabold transition-transform duration-300 ${
+                              isCompleted ? "scale-110" : ""
+                            } ${iconColorClass}`}
                           >
                             {h.name.slice(0, 1)}
                           </div>
@@ -361,8 +365,9 @@ export default function Home() {
                               {h.name}
                             </p>
                             <p
-                              className={`mt-1 text-sm transition-colors duration-300 ${isCompleted ? "text-emerald-700" : "text-slate-500"
-                                }`}
+                              className={`mt-1 text-sm transition-colors duration-300 ${
+                                isCompleted ? "text-emerald-700" : "text-slate-500"
+                              }`}
                             >
                               {isCompleted
                                 ? "今日の記録が完了しました"
@@ -371,15 +376,25 @@ export default function Home() {
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => checkHabit(h.id)}
-                          className={`w-full rounded-2xl px-4 py-3 text-base font-extrabold text-white shadow-lg transition-all duration-200 md:w-auto md:min-w-[120px] ${isCompleted
-                            ? "scale-105 bg-emerald-600 shadow-emerald-100"
-                            : "bg-green-500 shadow-green-100 hover:translate-y-[-1px] hover:bg-green-600 active:scale-[0.98]"
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => deleteHabit(h.id)}
+                            className="rounded-2xl border border-red-200 bg-white px-4 py-3 text-base font-extrabold text-red-600 shadow-sm transition-all duration-200 hover:bg-red-50 active:scale-[0.98]"
+                          >
+                            削除
+                          </button>
+
+                          <button
+                            onClick={() => checkHabit(h.id)}
+                            className={`rounded-2xl px-4 py-3 text-base font-extrabold text-white shadow-lg transition-all duration-200 md:px-5 ${
+                              isCompleted
+                                ? "scale-105 bg-emerald-600 shadow-emerald-100"
+                                : "bg-green-500 shadow-green-100 hover:translate-y-[-1px] hover:bg-green-600 active:scale-[0.98]"
                             }`}
-                        >
-                          {isCompleted ? "記録済み" : "✔ 記録"}
-                        </button>
+                          >
+                            {isCompleted ? "記録済み" : "✔ 記録"}
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -432,10 +447,11 @@ export default function Home() {
                   return (
                     <div
                       key={dateString}
-                      className={`relative flex aspect-square items-center justify-center rounded-2xl border text-sm font-bold transition-all duration-200 ${isCompletedDay
-                        ? "border-emerald-200 bg-gradient-to-br from-emerald-100 to-emerald-50 text-emerald-800 shadow-sm"
-                        : "border-slate-200 bg-white text-slate-700"
-                        } ${isToday ? "ring-2 ring-blue-400 ring-offset-2" : ""}`}
+                      className={`relative flex aspect-square items-center justify-center rounded-2xl border text-sm font-bold transition ${
+                        isCompletedDay
+                          ? "border-emerald-200 bg-emerald-100 text-emerald-800"
+                          : "border-slate-200 bg-slate-50 text-slate-700"
+                      } ${isToday ? "ring-2 ring-blue-400" : ""}`}
                     >
                       <span>{day}</span>
 
@@ -448,8 +464,7 @@ export default function Home() {
               </div>
             </section>
 
-            <section className="mt-8 relative overflow-hidden rounded-[28px] bg-gradient-to-r from-fuchsia-600 via-purple-600 to-indigo-600 p-6 text-white shadow-[0_18px_40px_rgba(109,40,217,0.28)] md:p-7">
-              <div className="pointer-events-none absolute inset-0 bg-white/10" />
+            <section className="mt-8 overflow-hidden rounded-[28px] bg-gradient-to-r from-fuchsia-600 via-purple-600 to-indigo-600 p-6 text-white shadow-[0_18px_40px_rgba(109,40,217,0.28)] md:p-7">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                   <div className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-sm font-semibold text-white/90">
@@ -466,30 +481,14 @@ export default function Home() {
                 <button
                   onClick={getAdvice}
                   disabled={loadingAdvice}
-                  className="inline-flex items-center justify-center rounded-2xl bg-white px-6 py-3 text-base font-extrabold text-purple-700 shadow-xl shadow-purple-900/20 transition-all duration-200 hover:translate-y-[-2px] hover:scale-[1.02] hover:bg-purple-50 active:scale-[0.97] disabled:opacity-70"
+                  className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-base font-extrabold text-purple-700 shadow-lg shadow-purple-900/10 transition-all duration-200 hover:translate-y-[-1px] hover:bg-purple-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {loadingAdvice ? "AIが考え中..." : "AIアドバイスをもらう"}
+                  {loadingAdvice ? "取得中..." : "AIアドバイスをもらう"}
                 </button>
               </div>
 
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <div className="rounded-3xl border border-white/10 bg-white/20 px-5 py-5 backdrop-blur">
-                  <p className="mb-2 text-sm font-bold text-purple-100">
-                    📊 総合フィードバック
-                  </p>
-                  <div className="whitespace-pre-wrap">
-                    {renderAdvice(advice)}
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-white/10 bg-white/10 px-5 py-5 backdrop-blur">
-                  <p className="mb-2 text-sm font-bold text-purple-100">
-                    🚀 明日のアクション
-                  </p>
-                  <p className="text-sm leading-7 text-purple-100">
-                    小さな1歩でもOK。継続を意識して行動しよう。
-                  </p>
-                </div>
+              <div className="mt-5 rounded-3xl border border-white/10 bg-white/15 px-5 py-5 whitespace-pre-wrap backdrop-blur-sm">
+                {renderAdvice(advice)}
               </div>
             </section>
           </div>

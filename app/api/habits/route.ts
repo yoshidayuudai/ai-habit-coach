@@ -36,47 +36,49 @@ export async function GET() {
   }
 }
 
-export async function POST(req: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+export async function DELETE(req: NextRequest) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     return NextResponse.json(
-      { error: 'Supabase環境変数が未設定です' },
+      { error: "Supabase環境変数が未設定です" },
       { status: 500 }
-    )
+    );
   }
 
   try {
-    const { name } = await req.json()
+    const { id } = await req.json();
 
-    if (!name || !String(name).trim()) {
-      return NextResponse.json(
-        { error: '習慣名を入力してください' },
-        { status: 400 }
-      )
+    if (!id) {
+      return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
 
-    const supabase = createClient(url, key)
+    const supabase = createClient(url, key);
 
-    const { data, error } = await supabase
-      .from('habits')
-      .insert({ name: String(name).trim() })
-      .select()
-      .single()
+    const { error: logDeleteError } = await supabase
+      .from("habit_logs")
+      .delete()
+      .eq("habit_id", id);
+
+    if (logDeleteError) {
+      return NextResponse.json(
+        { error: logDeleteError.message },
+        { status: 500 }
+      );
+    }
+
+    const { error } = await supabase.from("habits").delete().eq("id", id);
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json({ success: true });
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'unknown error' },
+      { error: e instanceof Error ? e.message : "unknown error" },
       { status: 500 }
-    )
+    );
   }
 }
