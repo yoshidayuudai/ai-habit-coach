@@ -53,11 +53,11 @@ export default function AddPage() {
             <label className="mb-2 block text-sm font-bold text-slate-700">
               習慣名
             </label>
-            <input
+            <input 
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="例: 筋トレ"
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              className="w-full rounded-3xl border border-blue-200 bg-white px-5 py-4 text-lg font-medium text-slate-900 placeholder:text-slate-300 outline-none ring-4 ring-blue-100 transition focus:border-blue-500"
             />
           </div>
 
