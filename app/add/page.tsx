@@ -21,11 +21,13 @@ export default function AddPage() {
       body: JSON.stringify({ name }),
     });
 
-    const data = await res.json();
+    const text = await res.text();
+    const data = text ? JSON.parse(text) : null;
+
     console.log("追加レスポンス:", data);
 
     if (!res.ok || data?.error) {
-      alert("追加に失敗しました");
+      alert(data?.error || "追加に失敗しました");
       return;
     }
 
@@ -53,7 +55,7 @@ export default function AddPage() {
             <label className="mb-2 block text-sm font-bold text-slate-700">
               習慣名
             </label>
-            <input 
+            <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="例: 筋トレ"
