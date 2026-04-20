@@ -1,66 +1,81 @@
-import { supabase } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
-  const { data, error } = await supabase
-    .from("habit_logs")
-    .select("*")
-    .order("id", { ascending: true });
+  try {
+    const supabase = await createClient();
 
-  if (error) {
-    console.error("Supabase logs GET error:", error);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    return new Response(
-      JSON.stringify({
-        error: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data, error } = await supabase
+      .from("habit_logs")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("id", { ascending: true });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(data ?? []);
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "unknown error" },
+      { status: 500 }
     );
   }
-
-  return new Response(JSON.stringify(data), {
-    headers: { "Content-Type": "application/json" },
-  });
 }
 
-export async function POST(req: Request) {
-  const body = await req.json();
-  const today = new Date().toISOString().split("T")[0];
+export async function POST(req: NextRequest) {
+  try {
+    const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("habit_logs")
-    .insert([
-      {
-        habit_id: body.habitId,
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { habitId } = await req.json();
+
+    if (!habitId) {
+      return NextResponse.json(
+        { error: "habitId is required" },
+        { status: 400 }
+      );
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+
+    const { data, error } = await supabase
+      .from("habit_logs")
+      .insert({
+        habit_id: habitId,
         date: today,
-      },
-    ])
-    .select()
-    .single();
+        user_id: user.id,
+      })
+      .select()
+      .single();
 
-  if (error) {
-    console.error("Supabase logs POST error:", error);
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
-    return new Response(
-      JSON.stringify({
-        error: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
+    return NextResponse.json(data);
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "unknown error" },
+      { status: 500 }
     );
   }
-
-  return new Response(JSON.stringify(data), {
-    headers: { "Content-Type": "application/json" },
-  });
 }

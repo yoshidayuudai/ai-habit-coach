@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 type Habit = {
   id: number;
   name: string;
@@ -121,6 +122,14 @@ function calculateStreak(logs: Log[]) {
 }
 
 export default function Home() {
+  const router = useRouter();
+  const supabase = createClient();
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
   const [habits, setHabits] = useState<Habit[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
   const [advice, setAdvice] = useState("");
@@ -280,11 +289,39 @@ export default function Home() {
       setLoadingAdvice(false);
     }
   };
+  useEffect(() => {
+    const checkAuth = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      setCheckingAuth(false);
+    };
+
+    checkAuth();
+  }, [router, supabase]);
 
   useEffect(() => {
+    if (checkingAuth) return;
+
     fetchHabits();
     fetchLogs();
-  }, []);
+  }, [checkingAuth]);
+
+  if (checkingAuth) {
+    return (
+      <main className="min-h-screen bg-slate-100 px-4 py-10">
+        <div className="mx-auto max-w-md rounded-3xl bg-white p-6 shadow-lg">
+          認証確認中...
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 px-4 py-8 md:py-12">
@@ -305,12 +342,21 @@ export default function Home() {
                 </p>
               </div>
 
-              <a
-                href="/add"
-                className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-base font-bold text-white shadow-lg shadow-blue-200 transition duration-200 hover:translate-y-[-1px] hover:bg-blue-700 active:scale-[0.98]"
-              >
-                習慣を追加
-              </a>
+              <div className="flex gap-3">
+                <a
+                  href="/add"
+                  className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-base font-bold text-white shadow-lg shadow-blue-200 transition duration-200 hover:translate-y-[-1px] hover:bg-blue-700 active:scale-[0.98]"
+                >
+                  習慣を追加
+                </a>
+
+                <button
+                  onClick={handleLogout}
+                  className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-base font-bold text-slate-700 transition duration-200 hover:bg-slate-50"
+                >
+                  ログアウト
+                </button>
+              </div>
             </div>
           </div>
 
@@ -346,17 +392,15 @@ export default function Home() {
                     return (
                       <div
                         key={h.id}
-                        className={`group flex items-center justify-between rounded-3xl border px-5 py-5 shadow-sm transition-all duration-300 ${
-                          isCompleted
-                            ? "scale-[1.01] border-emerald-200 bg-emerald-50/80 shadow-[0_14px_36px_rgba(16,185,129,0.16)]"
-                            : "border-slate-200 bg-white hover:translate-y-[-2px] hover:border-slate-300 hover:shadow-md"
-                        }`}
+                        className={`group flex items-center justify-between rounded-3xl border px-5 py-5 shadow-sm transition-all duration-300 ${isCompleted
+                          ? "scale-[1.01] border-emerald-200 bg-emerald-50/80 shadow-[0_14px_36px_rgba(16,185,129,0.16)]"
+                          : "border-slate-200 bg-white hover:translate-y-[-2px] hover:border-slate-300 hover:shadow-md"
+                          }`}
                       >
                         <div className="flex items-center gap-4">
                           <div
-                            className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-xl font-extrabold transition-transform duration-300 ${
-                              isCompleted ? "scale-110" : ""
-                            } ${iconColorClass}`}
+                            className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-xl font-extrabold transition-transform duration-300 ${isCompleted ? "scale-110" : ""
+                              } ${iconColorClass}`}
                           >
                             {h.name.slice(0, 1)}
                           </div>
@@ -365,9 +409,8 @@ export default function Home() {
                               {h.name}
                             </p>
                             <p
-                              className={`mt-1 text-sm transition-colors duration-300 ${
-                                isCompleted ? "text-emerald-700" : "text-slate-500"
-                              }`}
+                              className={`mt-1 text-sm transition-colors duration-300 ${isCompleted ? "text-emerald-700" : "text-slate-500"
+                                }`}
                             >
                               {isCompleted
                                 ? "今日の記録が完了しました"
@@ -386,11 +429,10 @@ export default function Home() {
 
                           <button
                             onClick={() => checkHabit(h.id)}
-                            className={`rounded-2xl px-4 py-3 text-base font-extrabold text-white shadow-lg transition-all duration-200 md:px-5 ${
-                              isCompleted
-                                ? "scale-105 bg-emerald-600 shadow-emerald-100"
-                                : "bg-green-500 shadow-green-100 hover:translate-y-[-1px] hover:bg-green-600 active:scale-[0.98]"
-                            }`}
+                            className={`rounded-2xl px-4 py-3 text-base font-extrabold text-white shadow-lg transition-all duration-200 md:px-5 ${isCompleted
+                              ? "scale-105 bg-emerald-600 shadow-emerald-100"
+                              : "bg-green-500 shadow-green-100 hover:translate-y-[-1px] hover:bg-green-600 active:scale-[0.98]"
+                              }`}
                           >
                             {isCompleted ? "記録済み" : "✔ 記録"}
                           </button>
@@ -447,11 +489,10 @@ export default function Home() {
                   return (
                     <div
                       key={dateString}
-                      className={`relative flex aspect-square items-center justify-center rounded-2xl border text-sm font-bold transition ${
-                        isCompletedDay
-                          ? "border-emerald-200 bg-emerald-100 text-emerald-800"
-                          : "border-slate-200 bg-slate-50 text-slate-700"
-                      } ${isToday ? "ring-2 ring-blue-400" : ""}`}
+                      className={`relative flex aspect-square items-center justify-center rounded-2xl border text-sm font-bold transition ${isCompletedDay
+                        ? "border-emerald-200 bg-emerald-100 text-emerald-800"
+                        : "border-slate-200 bg-slate-50 text-slate-700"
+                        } ${isToday ? "ring-2 ring-blue-400" : ""}`}
                     >
                       <span>{day}</span>
 
